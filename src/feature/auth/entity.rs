@@ -37,7 +37,7 @@ pub struct UserDB {
     pub version: i64,
 }
 
-#[derive(Deserialize, Serialize, Debug, ToSchema, sqlx::Type)]
+#[derive(Deserialize, Serialize, Debug, ToSchema, Clone, sqlx::Type)]
 #[sqlx(type_name = "user_role", rename_all = "lowercase")]
 pub enum UserRole {
     Admin,

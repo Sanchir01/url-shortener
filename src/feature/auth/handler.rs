@@ -1,7 +1,7 @@
 use crate::feature::auth::entity::{AuthGoogleDTO, LoginDTO, RegisterDTO};
+use crate::feature::auth::jwt::set_jwt;
 use crate::feature::auth::service::{UserService, UserServiceTrait};
 use crate::utils::url::generate_google_oauth_url;
-use axum::http::Response;
 use axum::{
     Json as AxumJson,
     extract::{Json, State},
@@ -138,13 +138,29 @@ pub async fn register_handler(
         .create_user_service(payload.title, payload.email, payload.password)
         .await
     {
-        Ok(user) => Ok((
-            StatusCode::CREATED,
-            AxumJson(json!({
-                "message": "User created",
-                "user": user
-            })),
-        )),
+        Ok(user) => {
+            let cookies = match set_jwt(user.id, user.role.clone()).await {
+                Ok(jar) => jar,
+                Err(e) => {
+                    eprintln!("❌ JWT generation error: {}", e);
+                    return Err((
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        AxumJson(json!({"error": "Failed to create session"})),
+                    ));
+                }
+            };
+
+            Ok((
+                StatusCode::CREATED,
+                (
+                    cookies,
+                    AxumJson(json!({
+                        "message": "User created",
+                        "user": user
+                    })),
+                ),
+            ))
+        }
         Err(e) => {
             eprintln!("❌ Internal error: {:?}", e);
             Err((
@@ -185,7 +201,16 @@ pub async fn get_user_by_email_handler(
         .get_user_by_email_service(payload.email, payload.password)
         .await
     {
-        Ok(Some(user)) => Ok((StatusCode::OK, AxumJson(json!({ "user": user })))),
+        Ok(Some(user)) => match set_jwt(user.id, user.role.clone()).await {
+            Ok(cookies) => Ok((StatusCode::OK, (cookies, AxumJson(json!({ "user": user }))))),
+            Err(err) => {
+                eprintln!("❌ JWT generation error: {err}");
+                Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    AxumJson(json!({ "error": "Failed to create session" })),
+                ))
+            }
+        },
         Ok(None) => Err((
             StatusCode::NOT_FOUND,
             AxumJson(json!({ "error": "User not found" })),

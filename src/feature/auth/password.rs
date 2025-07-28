@@ -37,9 +37,7 @@ pub fn verify_password_hash(password: &str, password_hash: &str) -> bool {
         .is_ok()
 }
 
-// Optimized version that works directly with bytes to avoid string conversion
 pub fn verify_password_hash_bytes(password: &str, password_hash_bytes: &[u8]) -> bool {
-    // Convert bytes to string slice without cloning
     let password_hash_str = match std::str::from_utf8(password_hash_bytes) {
         Ok(s) => s,
         Err(e) => {

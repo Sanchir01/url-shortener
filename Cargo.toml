@@ -12,10 +12,10 @@ tower-http = { version = "0.6.6", features = ["cors"] }
 axum = "0.8.4"
 humantime = "2.1.0"
 sqlx = { version = "0.8.6", features = [
-  "postgres",
-  "runtime-tokio-rustls",
-  "chrono",
-  "uuid",
+    "postgres",
+    "runtime-tokio-rustls",
+    "chrono",
+    "uuid",
 ] }
 uuid = { version = "1.17.0", features = ["v4", "serde"] }
 async-trait = "0.1.88"
@@ -34,10 +34,15 @@ url = "2.5.4"
 anyhow = "1.0.98"
 regex = "1.11.1"
 jsonwebtoken = "9.3.1"
-reqwest = {version =  "0.12.22", features = ["json"] }
-argon2 = {version ="0.5.3"}
-utoipa={version = "5.4.0", features = ["uuid", "chrono"]}
-utoipa-swagger-ui = {version = "9.0.2", features = ["axum"]}
+reqwest = { version = "0.12.22", features = ["json"] }
+argon2 = { version = "0.5.3" }
+utoipa = { version = "5.4.0", features = ["uuid", "chrono"] }
+utoipa-swagger-ui = { version = "9.0.2", features = ["axum"] }
+cookie = "0.18.1"
+axum-extra = { version = "0.10.1", features = ["cookie"] }
+prometheus = "0.14.0"
+tower = "0.5.2"
+
 
 [target.'cfg(not(target_os = "windows"))'.dependencies]
 jemallocator = { version = "0.5.4" }
