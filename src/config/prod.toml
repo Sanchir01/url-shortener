@@ -1,0 +1,13 @@
+[server]
+port = 4200
+host = "0.0.0.0"
+timeout= "4s"
+debug=true
+idle_timeout="60s"
+[database]
+username = "postgres"
+password = "VpfthnhDDrvyH2Yi9J0b6m38udda2e918Tlm6JORwhjeS8R4ko6sM9HJmGdo2qEW"
+host = "103.74.92.37"
+port = 5444
+database = "postgres"
+retry = 3

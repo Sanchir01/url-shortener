@@ -1,0 +1,23 @@
+services:
+  shortener:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "4200:4200"
+    environment:
+      - TELOXIDE_TOKEN = ${TELOXIDE_TOKEN}
+      - RUST_LOG=debug
+    command: ./url-shortener
+    restart: always
+  redis:
+    image: redis:latest
+    restart: always
+    ports:
+      - "6384:6384"
+    volumes:
+      - redis_data:/data
+    command: redis-server --save 60 1 --loglevel warning
+volumes:
+  shortener:
+  redis_data:

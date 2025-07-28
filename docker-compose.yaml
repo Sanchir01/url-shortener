@@ -1,0 +1,21 @@
+services:
+  db:
+    restart: always
+    image: postgres:latest
+    ports:
+      - "5443:5432"
+    environment:
+      - POSTGRES_DB=shortener
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+  redis:
+    image: redis:latest
+    restart: always
+    ports:
+      - "6384:6384"
+    volumes:
+      - redis_data:/data
+    command: redis-server --save 60 1 --loglevel warning
+volumes:
+  db:
+  redis_data:

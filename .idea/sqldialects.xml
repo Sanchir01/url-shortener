@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="SqlDialectMappings">
+    <file url="file://$PROJECT_DIR$/migrations/pg/20250714144648_url.sql" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/migrations/pg/20250714145021_url_index.sql" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/migrations/pg/20250715110649_created.sql" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/migrations/pg/20250716143505_unique_url.sql" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/src/migrations/20250608030712_test.sql" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/src/migrations/pg/20250714144648_url.sql" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/src/migrations/pg/20250714145021_url_index.sql" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/src/migrations/pg/20250715110649_created.sql" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/src/migrations/pg/20250715140149_new_migration.sql" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/src/migrations/pg/20250716143505_unique_url.sql" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/src/migrations/pg/20250716143957_new_migration.sql" dialect="GenericSQL" />
+  </component>
+</project>
