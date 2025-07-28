@@ -155,6 +155,18 @@ pub async fn register_handler(
     }
 }
 
+#[utoipa::path(
+    post,
+    path = "/auth/login",
+    request_body = LoginDTO,
+    responses(
+        (status = 200, description = "Login successful"),
+        (status = 422, description = "Validation error"),
+        (status = 500, description = "Internal server error"),
+        (status = 502, description = "Bad gateway")
+    ),
+    tag = "Auth"
+)]
 pub async fn get_user_by_email_handler(
     State(handler): State<Arc<UserHandler>>,
     Json(payload): Json<LoginDTO>,

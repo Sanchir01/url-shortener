@@ -1,5 +1,5 @@
 use crate::domain::url::Url;
-use crate::feature::auth::entity::{AuthGoogleDTO, RegisterDTO};
+use crate::feature::auth::entity::{AuthGoogleDTO, LoginDTO, RegisterDTO};
 use crate::feature::url::entity::{CreateUrlDTO, DeleteUrlDto};
 use utoipa::OpenApi;
 
@@ -19,10 +19,11 @@ pub struct CookieAuth;
         crate::feature::url::handler::delete_url_handler,
         crate::feature::auth::handler::google_oauth_handler,
         crate::feature::auth::handler::handle_google_code,
-        crate::feature::auth::handler::register_handler
+        crate::feature::auth::handler::register_handler,
+        crate::feature::auth::handler::get_user_by_email_handler
     ),
     components(
-        schemas(CreateUrlDTO, DeleteUrlDto, AuthGoogleDTO, Url, CookieAuth, RegisterDTO)
+        schemas(CreateUrlDTO, DeleteUrlDto, AuthGoogleDTO, Url, CookieAuth, RegisterDTO,LoginDTO)
     ),
     tags(
         (name = "URL", description = "Операции с URL"),

@@ -1,3 +1,4 @@
+use crate::feature::auth::password::{generate_hash_password, verify_password_hash_bytes};
 use crate::feature::auth::repository::UserRepositoryTrait;
 use crate::feature::auth::{entity::UserDB, repository::UserRepository};
 use async_trait::async_trait;
@@ -35,7 +36,14 @@ impl UserServiceTrait for UserService {
         email: String,
         password: String,
     ) -> Result<UserDB, sqlx::Error> {
-        let password_bytes: Vec<u8> = password.into_bytes();
+        let hashed_password = match generate_hash_password(password).await {
+            Ok(hash) => hash,
+            Err(e) => {
+                eprintln!("Failed to hash password: {}", e);
+                return Err(sqlx::Error::Configuration("Password hashing failed".into()));
+            }
+        };
+        let password_bytes: Vec<u8> = hashed_password.into_bytes();
         let user = self
             .user_repo
             .create_user(title, email, password_bytes)
@@ -47,6 +55,17 @@ impl UserServiceTrait for UserService {
         email: String,
         password: String,
     ) -> Result<Option<UserDB>, sqlx::Error> {
-        self.user_repo.get_user_by_email(email).await
+        let user_option = self.user_repo.get_user_by_email(email).await?;
+
+        match user_option {
+            Some(user) => {
+                if verify_password_hash_bytes(&password, &user.password) {
+                    Ok(Some(user))
+                } else {
+                    Ok(None)
+                }
+            }
+            None => Ok(None),
+        }
     }
 }
