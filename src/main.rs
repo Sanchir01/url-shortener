@@ -4,8 +4,10 @@ use crate::app::repositories::Repositories;
 use crate::app::services::Services;
 use crate::servers::http::server::run_http_server;
 use crate::utils::db::init_primary_db;
+use dotenvy::dotenv;
 use std::sync::Arc;
 use teloxide::{dispatching::dialogue::InMemStorage, prelude::*, utils::command::BotCommands};
+use uuid::Uuid;
 mod app;
 mod bot;
 mod domain;
@@ -13,6 +15,7 @@ mod feature;
 mod servers;
 mod swagger;
 mod utils;
+
 #[cfg(not(target_os = "windows"))]
 use jemallocator::Jemalloc as GlobalAlloc;
 
@@ -46,7 +49,7 @@ pub enum State {
     Start,
     ReceiveFullUrl,
 }
-use crate::swagger::swagger_api::ApiDoc;
+
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
     init_env();
@@ -60,11 +63,11 @@ async fn main() -> std::io::Result<()> {
     });
 
     let pool = init_primary_db(&config).await.expect("Count not init db");
-    let repo = Arc::new(Repositories::new(pool));
+    let repo = Arc::new(Repositories::new(pool.clone()));
     let services = Arc::new(Services::new(repo));
     let handlers = Arc::new(Handlers::new(services.clone()));
     let http_task = async {
-        run_http_server(&http_server.host, http_server.port, handlers).await;
+        run_http_server(&http_server.host, http_server.port, handlers, pool).await;
     };
     set_bot_commands(&bot)
         .await
@@ -89,7 +92,7 @@ async fn main() -> std::io::Result<()> {
         log::warn!("Bot task ended!");
     };
 
-    tokio::join!(http_task);
+    tokio::join!(bot_task, http_task);
 
     Ok(())
 }
@@ -152,13 +155,21 @@ async fn receive_full_url(
     services: Arc<Services>,
 ) -> HandlerResult {
     if let Some(valid_url) = extract_first_valid_url_from_message(&msg) {
-        if let Some(user) = &msg.from() {
-            let user_id = user.id;
+        let user_id = if let Some(user) = &msg.from() {
             let username = user.username.as_deref().unwrap_or("<no username>");
-            println!("valid url from {} ({}): {}", username, user_id, valid_url);
-        }
-
-        match services.url_service.create_url(valid_url.to_string()).await {
+            println!("valid url from {} ({}): {}", username, user.id, valid_url);
+            user.id
+        } else {
+            bot.send_message(msg.chat.id, "❌ Unable to identify user.")
+                .await?;
+            return Ok(());
+        };
+        let user_id_uuid = user_id_to_uuid(user_id);
+        match services
+            .url_service
+            .create_url(valid_url.to_string(), user_id_uuid)
+            .await
+        {
             Ok(created_url) => {
                 bot.send_message(msg.chat.id, format!("✅ Saved url: {:?}", created_url))
                     .await?;
@@ -187,4 +198,13 @@ fn init_env() {
     }
 
     pretty_env_logger::init();
+}
+fn user_id_to_uuid(user_id: UserId) -> Uuid {
+    // UserId - это обертка над i64
+    let id_bytes = user_id.0.to_be_bytes();
+    let mut uuid_bytes = [0u8; 16];
+
+    uuid_bytes[..8].copy_from_slice(&id_bytes);
+
+    Uuid::from_bytes(uuid_bytes)
 }

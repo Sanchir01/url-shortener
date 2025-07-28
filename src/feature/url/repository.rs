@@ -9,7 +9,7 @@ use uuid::Uuid;
 #[async_trait]
 pub trait UrlRepositoryTrait: Send + Sync {
     async fn get_all_url(&self) -> Result<Vec<Url>, sqlx::Error>;
-    async fn add_url(&self, url: String, aliase: String) -> Result<(), sqlx::Error>;
+    async fn add_url(&self, url: String, aliase: String, id: Uuid) -> Result<(), sqlx::Error>;
     async fn delete_url(&self, id: Uuid) -> Result<(), sqlx::Error>;
 }
 
@@ -40,17 +40,26 @@ impl UrlRepositoryTrait for UrlRepository {
             })?;
         Ok(urls)
     }
-    async fn add_url(&self, url: String, aliase: String) -> Result<(), sqlx::Error> {
+    async fn add_url(&self, url: String, aliase: String, user_id: Uuid) -> Result<(), sqlx::Error> {
         let (sql, values) = Query::insert()
             .into_table(Alias::new("url"))
-            .columns([Alias::new("url"), Alias::new("alias")])
-            .values_panic([url.clone().into(), aliase.clone().into()])
+            .columns([
+                Alias::new("url"),
+                Alias::new("alias"),
+                Alias::new("user_id"),
+            ])
+            .values_panic([
+                url.clone().into(),
+                aliase.clone().into(),
+                user_id.to_string().into(),
+            ])
             .build(PostgresQueryBuilder);
 
         println!("sql string value {:?}", values);
         sqlx::query(&sql)
             .bind(&url)
             .bind(&aliase)
+            .bind(&user_id)
             .execute(&self.primary_db)
             .await?;
 

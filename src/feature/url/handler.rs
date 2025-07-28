@@ -1,3 +1,4 @@
+use axum::Extension;
 use axum::extract::Path;
 use axum::response::Response;
 use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
@@ -6,7 +7,10 @@ use std::sync::Arc;
 use uuid::Uuid;
 use validator::Validate;
 
-use crate::feature::url::entity::{CreateUrlDTO, DeleteUrlDto};
+use crate::feature::auth::entity::UserRole;
+use crate::feature::url::entity::CreateUrlDTO;
+
+use crate::servers::http::middleware::UserJWT;
 use crate::{
     domain::url::Url,
     feature::url::service::{UrlService, UrlServiceTrait},
@@ -71,9 +75,14 @@ pub async fn get_all_url_handler_axum(
     tag = "URL"
 )]
 pub async fn create_url_handler(
+    Extension(user_jwt): Extension<UserJWT>,
     State(handlers): State<Arc<UrlHandler>>,
     Json(payload): Json<CreateUrlDTO>,
 ) -> impl IntoResponse {
+    let user = user_jwt.clone();
+    if user.role != UserRole::Admin {
+        return (StatusCode::FORBIDDEN, Json("Unauthorized".to_string()));
+    }
     if let Err(validation_errors) = payload.validate() {
         return (
             StatusCode::UNPROCESSABLE_ENTITY,
@@ -81,7 +90,7 @@ pub async fn create_url_handler(
         );
     }
 
-    match handlers.url_service.create_url(payload.url).await {
+    match handlers.url_service.create_url(payload.url, user.id).await {
         Ok(_) => (StatusCode::CREATED, Json("Saved".to_string())),
         Err(_) => (
             StatusCode::INTERNAL_SERVER_ERROR,

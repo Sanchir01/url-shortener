@@ -1,44 +1,93 @@
-use axum::http::{Request, Response};
-use std::convert::Infallible;
-use std::task::{Context, Poll};
-use tower::{Layer, Service};
+use crate::feature::auth::entity::UserRole;
+use crate::feature::auth::jwt::decode_jwt;
+use crate::utils::constants::{ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE};
+use axum::{
+    extract::Request,
+    http::{StatusCode, header::COOKIE},
+    middleware::Next,
+    response::Response,
+};
+use cookie::Cookie;
+use log::{error, info};
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
-// 1. Сам middleware-слой
-#[derive(Clone)]
-pub struct HelloSanchirLayer;
+#[derive(Debug, Clone)]
+pub struct RefreshToken(pub String);
 
-impl<S> Layer<S> for HelloSanchirLayer {
-    type Service = HelloSanchirMiddleware<S>;
+#[derive(Debug, Clone)]
+pub struct AccessToken(pub String);
 
-    fn layer(&self, inner: S) -> Self::Service {
-        HelloSanchirMiddleware { inner }
-    }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserJWT {
+    pub id: Uuid,
+    pub role: UserRole,
 }
 
-#[derive(Clone)]
-pub struct HelloSanchirMiddleware<S> {
-    inner: S,
+pub async fn auth_middleware(mut req: Request, next: Next) -> Result<Response, StatusCode> {
+    if let Some(tokens) = extract_tokens_from_request(&req) {
+        if let Some(access_token) = tokens.access_token {
+            match decode_jwt(&access_token).await {
+                Ok(user_jwt) => {
+                    req.extensions_mut().insert(UserJWT {
+                        id: user_jwt.id,
+                        role: user_jwt.role,
+                    });
+                    info!("Valid access token for user:",);
+                }
+                Err(e) => {
+                    error!("Invalid access token: {:?}", e);
+                }
+            }
+        }
+
+        if let Some(refresh_token) = tokens.refresh_token {
+            match decode_jwt(&refresh_token).await {
+                Ok(user_jwt) => {
+                    req.extensions_mut().insert(UserJWT {
+                        id: user_jwt.id,
+                        role: user_jwt.role,
+                    });
+                    info!("Valid access token for user");
+                }
+                Err(e) => {
+                    error!("Invalid access token: {:?}", e);
+                }
+            }
+        }
+    } else {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+
+    Ok(next.run(req).await)
 }
 
-impl<S, ReqBody> Service<Request<ReqBody>> for HelloSanchirMiddleware<S>
-where
-    S: Service<Request<ReqBody>, Response = Response<axum::body::Body>, Error = Infallible>
-        + Clone
-        + Send
-        + 'static,
-    ReqBody: Send + 'static,
-    S::Future: Send + 'static,
-{
-    type Response = S::Response;
-    type Error = S::Error;
-    type Future = S::Future;
+struct Tokens {
+    access_token: Option<String>,
+    refresh_token: Option<String>,
+}
 
-    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.inner.poll_ready(cx)
-    }
+fn extract_tokens_from_request(req: &Request) -> Option<Tokens> {
+    let cookie_header = req.headers().get(COOKIE)?;
+    let cookie_str = cookie_header.to_str().ok()?;
 
-    fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
-        println!("👋 Hello Sanchir!");
-        self.inner.call(req)
-    }
+    let cookies: Vec<Cookie> = cookie_str
+        .split(';')
+        .filter_map(|cookie| Cookie::parse(cookie.trim()).ok())
+        .collect();
+
+    let access_token = cookies
+        .iter()
+        .find(|cookie| cookie.name() == ACCESS_TOKEN_COOKIE)
+        .map(|cookie| cookie.value().to_string());
+
+    let refresh_token = cookies
+        .iter()
+        .find(|cookie| cookie.name() == REFRESH_TOKEN_COOKIE)
+        .map(|cookie| cookie.value().to_string());
+
+    Some(Tokens {
+        access_token,
+        refresh_token,
+    })
 }

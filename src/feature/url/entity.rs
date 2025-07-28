@@ -15,9 +15,3 @@ pub struct CreateUrlDTO {
     #[validate(url)]
     pub url: String,
 }
-
-#[derive(Debug, Deserialize, Serialize, Validate, ToSchema)]
-pub struct DeleteUrlDto {
-    #[validate(custom(function = "validate_not_nil"))]
-    pub id: Uuid,
-}

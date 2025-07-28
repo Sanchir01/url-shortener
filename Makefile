@@ -13,10 +13,6 @@ run:
 	cargo watch -x 'run -p url-shortener'
 
 
-
-workspace:
-	cargo watch -x 'run -p metrics-server' && cargo watch -x 'run -p url-shortener'
-
 migrations-click-up:
 	goose -dir migrations clickhouse "tcp://localhost:9000?username=default&password=clickhouse" up
 
