@@ -49,7 +49,6 @@ pub enum State {
     Start,
     ReceiveFullUrl,
 }
-
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
     init_env();
@@ -72,7 +71,6 @@ async fn main() -> std::io::Result<()> {
     set_bot_commands(&bot)
         .await
         .expect("Failed to set commands");
-
     let bot_task = async {
         Dispatcher::builder(
             bot,
@@ -190,7 +188,6 @@ async fn receive_full_url(
     }
     Ok(())
 }
-
 fn init_env() {
     #[cfg(debug_assertions)]
     {
