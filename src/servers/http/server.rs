@@ -2,6 +2,7 @@ use crate::feature::auth::handler::{
     get_user_by_email_handler, google_oauth_handler, handle_google_code, register_handler,
 };
 use crate::feature::url::handler::{create_url_handler, delete_url_handler};
+use crate::metrics::{PrometheusMetrics, metrics_middleware, middleware::metrics_handler};
 use crate::servers::http::middleware::auth_middleware;
 use crate::{
     app::handlers::Handlers, feature::url::handler::get_all_url_handler_axum,
@@ -9,7 +10,7 @@ use crate::{
 };
 use axum::{
     Router,
-    middleware::from_fn,
+    middleware::{from_fn, from_fn_with_state},
     routing::{delete, get, post},
 };
 use sqlx::{Pool, Postgres};
@@ -17,13 +18,19 @@ use tower_http::compression::CompressionLayer;
 
 use std::sync::Arc;
 #[cfg(unix)]
-use tokio::signal::unix::SignalKind;
+use tokio::signal::unix::{SignalKind, signal};
 use tokio::{net::TcpListener, signal};
 use tower_http::cors::{Any, CorsLayer};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
-pub async fn run_http_server(host: &str, port: u16, handlers: Arc<Handlers>, pool: Pool<Postgres>) {
+pub async fn run_http_server(
+    host: &str,
+    port: u16,
+    handlers: Arc<Handlers>,
+    pool: Pool<Postgres>,
+    metrics: Arc<PrometheusMetrics>,
+) {
     let listener = TcpListener::bind(format!("{}:{}", host, port))
         .await
         .unwrap();
@@ -47,12 +54,20 @@ pub async fn run_http_server(host: &str, port: u16, handlers: Arc<Handlers>, poo
         .nest("/auth", auth_basic)
         .with_state(handlers.url_handler.clone());
 
+    // Добавляем эндпоинт для метрик
+    let metrics_route = Router::new()
+        .route("/metrics", get(metrics_handler))
+        .with_state(metrics.clone());
+
     let app = axum::Router::new()
-        .nest("/api", public_routes)
-        .nest("/api/private", private_router)
+        .nest("/api/v1", public_routes)
+        .nest("/api/v1/private", private_router)
+        .merge(metrics_route)
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .layer(get_cors())
-        .layer(CompressionLayer::new());
+        .layer(CompressionLayer::new())
+        .layer(from_fn_with_state(metrics.clone(), metrics_middleware))
+        .with_state(metrics);
 
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal(pool))

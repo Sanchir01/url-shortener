@@ -4,7 +4,6 @@ use argon2::{
 };
 use std::sync::OnceLock;
 
-// Cached Argon2 instance for better performance
 static ARGON2: OnceLock<Argon2> = OnceLock::new();
 
 fn get_argon2() -> &'static Argon2<'static> {

@@ -164,8 +164,8 @@ pub async fn register_handler(
         Err(e) => {
             eprintln!("❌ Internal error: {:?}", e);
             Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                AxumJson(json!({"error": "Internal server error"})),
+                StatusCode::FORBIDDEN,
+                AxumJson(json!({"error": "Error creating user"})),
             ))
         }
     }

@@ -4,6 +4,7 @@ use crate::feature::auth::{entity::UserDB, repository::UserRepository};
 use async_trait::async_trait;
 use mockall::automock;
 use std::sync::Arc;
+
 #[cfg_attr(test, automock)]
 #[async_trait]
 pub trait UserServiceTrait {

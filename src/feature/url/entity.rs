@@ -10,6 +10,13 @@ fn validate_not_nil(id: &Uuid) -> Result<(), ValidationError> {
         Ok(())
     }
 }
+
+#[derive(Debug, Deserialize, Serialize, Validate, ToSchema)]
+pub struct RedirectDto {
+    #[validate(length(min = 1))]
+    pub id: String,
+}
+
 #[derive(Debug, Deserialize, Serialize, Validate, ToSchema)]
 pub struct CreateUrlDTO {
     #[validate(url)]

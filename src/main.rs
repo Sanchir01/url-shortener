@@ -2,6 +2,7 @@ use crate::app::config::Config;
 use crate::app::handlers::Handlers;
 use crate::app::repositories::Repositories;
 use crate::app::services::Services;
+use crate::metrics::PrometheusMetrics;
 use crate::servers::http::server::run_http_server;
 use crate::utils::db::init_primary_db;
 use dotenvy::dotenv;
@@ -12,6 +13,7 @@ mod app;
 mod bot;
 mod domain;
 mod feature;
+mod metrics;
 mod servers;
 mod swagger;
 mod utils;
@@ -64,9 +66,18 @@ async fn main() -> std::io::Result<()> {
     let pool = init_primary_db(&config).await.expect("Count not init db");
     let repo = Arc::new(Repositories::new(pool.clone()));
     let services = Arc::new(Services::new(repo));
-    let handlers = Arc::new(Handlers::new(services.clone()));
+    let metrics = Arc::new(PrometheusMetrics::new().expect("Failed to create Prometheus metrics"));
+    let handlers = Arc::new(Handlers::new(services.clone(), metrics.clone()));
+    let metrics_clone = metrics.clone();
     let http_task = async {
-        run_http_server(&http_server.host, http_server.port, handlers, pool).await;
+        run_http_server(
+            &http_server.host,
+            http_server.port,
+            handlers,
+            pool,
+            metrics_clone,
+        )
+        .await;
     };
     set_bot_commands(&bot)
         .await
@@ -81,7 +92,8 @@ async fn main() -> std::io::Result<()> {
         )
         .dependencies(dptree::deps![
             InMemStorage::<State>::new(),
-            Arc::clone(&services)
+            Arc::clone(&services),
+            Arc::clone(&metrics)
         ])
         .enable_ctrlc_handler()
         .build()
@@ -99,10 +111,11 @@ async fn command_handler(
     msg: Message,
     cmd: Command,
     dialogue: MyDialogue,
+    metrics: Arc<PrometheusMetrics>,
 ) -> anyhow::Result<()> {
     match cmd {
         Command::Start => {
-            start(bot, dialogue, msg)
+            start(bot, dialogue, msg, metrics)
                 .await
                 .expect("TODO: panic message");
         }
@@ -133,7 +146,12 @@ async fn set_bot_commands(bot: &Bot) -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn start(bot: Bot, dialogue: MyDialogue, msg: Message) -> HandlerResult {
+async fn start(
+    bot: Bot,
+    dialogue: MyDialogue,
+    msg: Message,
+    metrics: Arc<PrometheusMetrics>,
+) -> HandlerResult {
     if let Some(txt) = msg.text() {
         if txt != "/start" {
             bot.send_message(msg.chat.id, "Please, write /start")
@@ -151,7 +169,10 @@ async fn receive_full_url(
     dialogue: MyDialogue,
     msg: Message,
     services: Arc<Services>,
+    metrics: Arc<PrometheusMetrics>,
 ) -> HandlerResult {
+    metrics.inc_telegram_messages();
+
     if let Some(valid_url) = extract_first_valid_url_from_message(&msg) {
         let user_id = if let Some(user) = &msg.from() {
             let username = user.username.as_deref().unwrap_or("<no username>");
@@ -169,10 +190,12 @@ async fn receive_full_url(
             .await
         {
             Ok(created_url) => {
+                metrics.inc_url_shortening();
                 bot.send_message(msg.chat.id, format!("✅ Saved url: {:?}", created_url))
                     .await?;
             }
             Err(e) => {
+                metrics.inc_errors("url_creation_error", "telegram_bot");
                 bot.send_message(msg.chat.id, "❌ Failed to save URL.")
                     .await?;
                 log::error!("Failed to create url: {:?}", e);

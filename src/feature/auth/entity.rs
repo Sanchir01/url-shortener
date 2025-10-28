@@ -1,9 +1,14 @@
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
+use sqlx::Error as SqlxError;
 use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
-
+#[derive(Debug)]
+pub enum AppError {
+    UserAlreadyExists,
+    Db(SqlxError),
+}
 #[derive(Deserialize, Validate, Serialize, Debug, ToSchema)]
 pub struct AuthGoogleDTO {
     #[validate(length(min = 1))]
@@ -45,7 +50,6 @@ pub enum UserRole {
     Moderator,
 }
 
-// Sea Query константы для таблицы users
 pub const USERS_TABLE: &str = "users";
 pub const USERS_ID: &str = "id";
 pub const USERS_TITLE: &str = "title";

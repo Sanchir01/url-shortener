@@ -2,6 +2,7 @@ use crate::domain::url::Url;
 use async_trait::async_trait;
 use mockall::{automock, predicate::*};
 use sea_query::{Alias, Expr, PostgresQueryBuilder, Query};
+use sea_query_binder::SqlxBinder;
 use sqlx::{Pool, Postgres, query_as};
 use uuid::Uuid;
 
@@ -10,6 +11,7 @@ use uuid::Uuid;
 pub trait UrlRepositoryTrait: Send + Sync {
     async fn get_all_url(&self) -> Result<Vec<Url>, sqlx::Error>;
     async fn add_url(&self, url: String, aliase: String, id: Uuid) -> Result<(), sqlx::Error>;
+    async fn get_url_by_hash(&self, id: String) -> Result<Option<Url>, sqlx::Error>;
     async fn delete_url(&self, id: Uuid) -> Result<(), sqlx::Error>;
 }
 
@@ -39,6 +41,22 @@ impl UrlRepositoryTrait for UrlRepository {
                 err
             })?;
         Ok(urls)
+    }
+    async fn get_url_by_hash(&self, id: String) -> Result<Option<Url>, sqlx::Error> {
+        let (sql, _) = Query::select()
+            .columns(["id", "alias", "url"])
+            .from("url")
+            .and_where(Expr::col("id").eq(Expr::val(id.to_string())))
+            .build_sqlx(PostgresQueryBuilder);
+        let url = query_as::<_, Url>(&sql)
+            .bind(id)
+            .fetch_optional(&self.primary_db)
+            .await
+            .map_err(|err| {
+                eprintln!("❌ Error fetching url by hash: {:?}", err);
+                err
+            })?;
+        Ok(url)
     }
     async fn add_url(&self, url: String, aliase: String, user_id: Uuid) -> Result<(), sqlx::Error> {
         let (sql, values) = Query::insert()

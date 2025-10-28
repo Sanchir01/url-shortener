@@ -11,6 +11,7 @@ use uuid::Uuid;
 pub trait UrlServiceTrait: Send + Sync {
     async fn get_all_url(&self) -> Result<Vec<Url>, sqlx::Error>;
     async fn create_url(&self, url: String, id: Uuid) -> Result<(), sqlx::Error>;
+    async fn get_url_by_hash(&self, id: String) -> Result<Option<Url>, sqlx::Error>;
     async fn delete_url(&self, id: Uuid) -> Result<(), sqlx::Error>;
 }
 #[derive(Clone)]
@@ -35,6 +36,9 @@ impl UrlServiceTrait for UrlService {
             Err(_) => return Err(sqlx::Error::Protocol("random string error".into())),
         };
         self.url_repository.add_url(url, alias, id).await
+    }
+    async fn get_url_by_hash(&self, id: String) -> Result<Option<Url>, sqlx::Error> {
+        self.url_repository.get_url_by_hash(id).await
     }
     async fn delete_url(&self, id: Uuid) -> Result<(), sqlx::Error> {
         self.url_repository.delete_url(id).await

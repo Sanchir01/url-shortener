@@ -12,12 +12,6 @@ use log::{error, info};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Debug, Clone)]
-pub struct RefreshToken(pub String);
-
-#[derive(Debug, Clone)]
-pub struct AccessToken(pub String);
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserJWT {
     pub id: Uuid,

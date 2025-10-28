@@ -48,10 +48,10 @@ impl Config {
     pub async fn new() -> Self {
         let config_path = if cfg!(debug_assertions) {
             println!("[DEV MODE]");
-            "./src/config/dev.toml"
+            "./src/config/dev/config.toml"
         } else {
             println!("[PROD MODE]");
-            "prod.toml"
+            "config.toml"
         };
 
         match fs::read_to_string(config_path).await {
